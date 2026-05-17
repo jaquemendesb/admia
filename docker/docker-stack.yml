@@ -13,7 +13,7 @@ version: "3.7"
 #   docker exec \
 #     -e SEED_ADMIN_EMAIL=admin@jaquemendes.com \
 #     -e SEED_ADMIN_PASSWORD=SuaSenha \
-#     $(docker ps -q -f name=admia_admia) ./node_modules/.bin/tsx prisma/seeds/index.ts
+#     $(docker ps -q -f name=admia_admia) node prisma/seeds/seed.mjs
 # =============================================================================
 
 services:
