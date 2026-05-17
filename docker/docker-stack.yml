@@ -10,13 +10,13 @@ version: "3.7"
 # Após o primeiro deploy, execute no container (apenas uma vez):
 #
 #   1. Aplicar migrations no banco:
-#      docker exec $(docker ps -q -f name=admia_admia) npx prisma migrate deploy
+#      docker exec $(docker ps -q -f name=admia_admia) ./node_modules/.bin/prisma migrate deploy
 #
 #   2. Criar usuário SUPER_ADMIN:
 #      docker exec \
 #        -e SEED_ADMIN_EMAIL=admin@jaquemendes.com \
-#        -e SEED_ADMIN_PASSWORD=SuaSenhaForte123! \
-#        $(docker ps -q -f name=admia_admia) npx prisma db seed
+#        -e SEED_ADMIN_PASSWORD=SuaSenha \
+#        $(docker ps -q -f name=admia_admia) ./node_modules/.bin/tsx prisma/seeds/index.ts
 # =============================================================================
 
 services:
