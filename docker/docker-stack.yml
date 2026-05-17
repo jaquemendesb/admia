@@ -17,7 +17,8 @@ services:
     image: jaquemendesb/admia:latest  # Imagem publicada via GitHub Actions no Docker Hub
 
     # ── Variáveis de ambiente ─────────────────────────────────────────────────
-    # Preencher no Portainer em "Environment variables" ou via arquivo .env
+    # NÃO coloque valores reais aqui — este arquivo está no GitHub público.
+    # Preencha os valores no Portainer em "Environment variables".
     environment:
       - NODE_ENV=production
       - DATABASE_URL=${DATABASE_URL}           # postgresql://user:pass@host:5432/pjm_automation_ai
@@ -28,7 +29,7 @@ services:
 
     # ── Health check ──────────────────────────────────────────────────────────
     # Swarm só considera o container saudável após /api/health retornar 200.
-    # start_period dá tempo para o Next.js iniciar antes das verificações.
+    # Usa node (já disponível na imagem) — wget não está instalado no Alpine.
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
