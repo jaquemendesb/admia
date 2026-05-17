@@ -1,0 +1,556 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum RoleName {
+  SUPER_ADMIN
+  ADMIN
+  READONLY
+}
+
+enum IntegrationType {
+  WOOCOMMERCE
+}
+
+enum SourceType {
+  WOOCOMMERCE
+  MANUAL
+  INTERNAL
+  BLOG
+  URL
+}
+
+enum ItemType {
+  PRODUCT
+  COURSE
+  LESSON
+  ARTICLE
+  DOWNLOAD
+  BONUS
+  MEMBERSHIP
+  RESOURCE
+}
+
+enum AssignmentRole {
+  PRIMARY
+  UPSELL
+  BONUS
+  CONTENT
+  SUPPORTING
+}
+
+enum AgentRole {
+  ROUTER
+  CONVERSATION
+  SUPPORT
+  MEMORY
+  POLICY
+}
+
+enum PolicyType {
+  TEST
+  WHITELIST
+  BLACKLIST
+}
+
+enum PolicySource {
+  MANUAL
+  AI
+  SYSTEM
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  AUDIO
+  VIDEO
+  DOCUMENT
+  STICKER
+  REACTION
+  TEMPLATE
+  SYSTEM
+}
+
+enum SyncStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  PARTIAL
+  FAILED
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum ValueType {
+  STRING
+  INTEGER
+  BOOLEAN
+  JSON
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USERS & RBAC
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String
+  email         String    @unique
+  password_hash String
+  active        Boolean   @default(true)
+  last_login_at DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+
+  user_roles       UserRole[]
+  audit_logs       AuditLog[]
+  maintenance_jobs MaintenanceJob[]
+
+  @@map("users")
+}
+
+model Role {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       RoleName @unique
+  created_at DateTime @default(now())
+
+  user_roles       UserRole[]
+  role_permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  resource    String
+  action      String
+  description String?
+  created_at  DateTime @default(now())
+
+  role_permissions RolePermission[]
+
+  @@unique([resource, action])
+  @@map("permissions")
+}
+
+model UserRole {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  role_id    String   @db.Uuid
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+  role Role @relation(fields: [role_id], references: [id])
+
+  @@unique([user_id, role_id])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id            String   @id @default(uuid()) @db.Uuid
+  role_id       String   @db.Uuid
+  permission_id String   @db.Uuid
+  created_at    DateTime @default(now())
+
+  role       Role       @relation(fields: [role_id], references: [id])
+  permission Permission @relation(fields: [permission_id], references: [id])
+
+  @@unique([role_id, permission_id])
+  @@map("role_permissions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUDIT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  actor_user_id String?  @db.Uuid
+  resource_type String
+  resource_id   String?
+  action        String
+  before_json   Json?
+  after_json    Json?
+  ip_address    String?
+  user_agent    String?
+  created_at    DateTime @default(now())
+
+  actor User? @relation(fields: [actor_user_id], references: [id])
+
+  @@index([actor_user_id])
+  @@index([resource_type])
+  @@index([created_at])
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMMERCE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model BusinessChannel {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String    @unique
+  description String?
+  active      Boolean   @default(true)
+  priority    Int       @default(0)
+  icon        String?
+  color       String?
+  metadata    Json?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+
+  channel_assignments ChannelAssignment[]
+  knowledge_base      KnowledgeBase[]
+  integrations        Integration[]
+
+  @@map("business_channels")
+}
+
+model Integration {
+  id                    String          @id @default(uuid()) @db.Uuid
+  name                  String
+  slug                  String          @unique
+  integration_type      IntegrationType
+  base_url              String
+  credentials_encrypted String
+  active                Boolean         @default(true)
+  sync_enabled          Boolean         @default(false)
+  default_channel_id    String?         @db.Uuid
+  last_sync_at          DateTime?
+  metadata              Json?
+  created_at            DateTime        @default(now())
+  updated_at            DateTime        @updatedAt
+  deleted_at            DateTime?
+
+  default_channel BusinessChannel? @relation(fields: [default_channel_id], references: [id])
+  catalog_items   CatalogItem[]
+  sync_logs       SyncLog[]
+
+  @@map("integrations")
+}
+
+model CatalogItem {
+  id                String     @id @default(uuid()) @db.Uuid
+  title             String
+  slug              String     @unique
+  source_type       SourceType
+  item_type         ItemType
+  integration_id    String?    @db.Uuid
+  external_id       String?
+  sku               String?
+  short_description String?
+  full_description  String?
+  price             Decimal?   @db.Decimal(10, 2)
+  sale_price        Decimal?   @db.Decimal(10, 2)
+  currency          String?    @default("BRL")
+  access_url        String?
+  thumbnail_url     String?
+  active            Boolean    @default(true)
+  metadata          Json?
+  created_at        DateTime   @default(now())
+  updated_at        DateTime   @updatedAt
+  deleted_at        DateTime?
+
+  integration         Integration?       @relation(fields: [integration_id], references: [id])
+  channel_assignments ChannelAssignment[]
+  offer_items         OfferItem[]
+
+  @@unique([external_id, integration_id])
+  @@index([slug])
+  @@index([sku])
+  @@index([external_id, integration_id])
+  @@map("catalog_items")
+}
+
+model ChannelAssignment {
+  id                  String         @id @default(uuid()) @db.Uuid
+  business_channel_id String         @db.Uuid
+  catalog_item_id     String         @db.Uuid
+  assignment_role     AssignmentRole @default(PRIMARY)
+  priority            Int            @default(0)
+  visible             Boolean        @default(true)
+  exclusive           Boolean        @default(false)
+  sales_notes         String?
+  metadata            Json?
+  created_at          DateTime       @default(now())
+  updated_at          DateTime       @updatedAt
+  deleted_at          DateTime?
+
+  business_channel BusinessChannel @relation(fields: [business_channel_id], references: [id])
+  catalog_item     CatalogItem     @relation(fields: [catalog_item_id], references: [id])
+
+  @@unique([business_channel_id, catalog_item_id])
+  @@map("channel_assignments")
+}
+
+model Offer {
+  id          String    @id @default(uuid()) @db.Uuid
+  title       String
+  slug        String    @unique
+  description String?
+  active      Boolean   @default(true)
+  base_price  Decimal?  @db.Decimal(10, 2)
+  sale_price  Decimal?  @db.Decimal(10, 2)
+  metadata    Json?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+
+  offer_items OfferItem[]
+
+  @@map("offers")
+}
+
+model OfferItem {
+  id              String  @id @default(uuid()) @db.Uuid
+  offer_id        String  @db.Uuid
+  catalog_item_id String  @db.Uuid
+  quantity        Int     @default(1)
+  role            String?
+  metadata        Json?
+
+  offer        Offer       @relation(fields: [offer_id], references: [id])
+  catalog_item CatalogItem @relation(fields: [catalog_item_id], references: [id])
+
+  @@map("offer_items")
+}
+
+model KnowledgeBase {
+  id                  String    @id @default(uuid()) @db.Uuid
+  title               String
+  slug                String    @unique
+  content             String
+  knowledge_type      String
+  active              Boolean   @default(true)
+  business_channel_id String?   @db.Uuid
+  metadata            Json?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  deleted_at          DateTime?
+
+  business_channel BusinessChannel? @relation(fields: [business_channel_id], references: [id])
+
+  @@index([slug])
+  @@index([business_channel_id])
+  @@map("knowledge_base")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI GOVERNANCE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Persona {
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String
+  slug          String    @unique
+  description   String?
+  system_prompt String
+  tone          String?
+  language      String    @default("pt-BR")
+  active        Boolean   @default(true)
+  is_default    Boolean   @default(false)
+  metadata      Json?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+
+  @@map("personas")
+}
+
+model AiAgent {
+  id              String    @id @default(uuid()) @db.Uuid
+  name            String
+  slug            String    @unique
+  agent_role      AgentRole
+  model_alias     String
+  prompt_template String
+  active          Boolean   @default(true)
+  metadata        Json?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  deleted_at      DateTime?
+
+  @@map("ai_agents")
+}
+
+model AutomationConfig {
+  id           String    @id @default(uuid()) @db.Uuid
+  config_key   String    @unique
+  config_value String
+  value_type   ValueType @default(STRING)
+  metadata     Json?
+  updated_at   DateTime  @updatedAt
+
+  @@index([config_key])
+  @@map("automation_config")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTACTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Contact {
+  id         String    @id @default(uuid()) @db.Uuid
+  name       String?
+  phone      String?
+  email      String?
+  notes      String?
+  active     Boolean   @default(true)
+  metadata   Json?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+
+  conversations    Conversation[]
+  messages         Message[]
+  contact_memory   ContactMemory[]
+  contact_policies ContactPolicy[]
+  policy_logs      PolicyLog[]
+
+  @@index([phone])
+  @@index([email])
+  @@map("contacts")
+}
+
+model Conversation {
+  id               String   @id @default(uuid()) @db.Uuid
+  contact_id       String   @db.Uuid
+  channel          String
+  started_at       DateTime @default(now())
+  last_activity_at DateTime @default(now())
+  metadata         Json?
+
+  contact  Contact   @relation(fields: [contact_id], references: [id])
+  messages Message[]
+
+  @@index([contact_id])
+  @@index([last_activity_at])
+  @@map("conversations")
+}
+
+model Message {
+  id                  String           @id @default(uuid()) @db.Uuid
+  conversation_id     String           @db.Uuid
+  contact_id          String           @db.Uuid
+  direction           MessageDirection
+  message_type        MessageType      @default(TEXT)
+  content             String?
+  provider_message_id String?
+  metadata            Json?
+  created_at          DateTime         @default(now())
+
+  conversation Conversation @relation(fields: [conversation_id], references: [id])
+  contact      Contact      @relation(fields: [contact_id], references: [id])
+
+  @@index([contact_id])
+  @@index([conversation_id])
+  @@index([created_at])
+  @@index([contact_id, created_at])
+  @@map("messages")
+}
+
+model ContactMemory {
+  id           String   @id @default(uuid()) @db.Uuid
+  contact_id   String   @db.Uuid
+  memory_key   String
+  memory_value String
+  confidence   Float?
+  source       String?
+  metadata     Json?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  contact Contact @relation(fields: [contact_id], references: [id])
+
+  @@map("contact_memory")
+}
+
+model ContactPolicy {
+  id          String       @id @default(uuid()) @db.Uuid
+  contact_id  String       @db.Uuid
+  policy_type PolicyType
+  source_type PolicySource @default(MANUAL)
+  active      Boolean      @default(true)
+  notes       String?
+  created_at  DateTime     @default(now())
+  updated_at  DateTime     @updatedAt
+
+  contact Contact @relation(fields: [contact_id], references: [id])
+
+  @@index([contact_id])
+  @@index([policy_type])
+  @@index([contact_id, policy_type])
+  @@map("contact_policies")
+}
+
+model PolicyLog {
+  id          String     @id @default(uuid()) @db.Uuid
+  contact_id  String     @db.Uuid
+  policy_type PolicyType
+  action      String
+  source      String?
+  details     Json?
+  created_at  DateTime   @default(now())
+
+  contact Contact @relation(fields: [contact_id], references: [id])
+
+  @@map("policy_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OPERATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SyncLog {
+  id             String     @id @default(uuid()) @db.Uuid
+  integration_id String     @db.Uuid
+  sync_type      String
+  status         SyncStatus @default(PENDING)
+  started_at     DateTime   @default(now())
+  finished_at    DateTime?
+  details        Json?
+
+  integration Integration @relation(fields: [integration_id], references: [id])
+
+  @@index([integration_id])
+  @@index([status])
+  @@map("sync_logs")
+}
+
+model MaintenanceJob {
+  id                  String    @id @default(uuid()) @db.Uuid
+  job_type            String
+  status              JobStatus @default(PENDING)
+  payload             Json?
+  started_at          DateTime?
+  finished_at         DateTime?
+  created_by_user_id  String?   @db.Uuid
+  created_at          DateTime  @default(now())
+
+  created_by User? @relation(fields: [created_by_user_id], references: [id])
+
+  @@map("maintenance_jobs")
+}

@@ -1,0 +1,59 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# ADMIA — .gitignore
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Dependencies ──────────────────────────────────────────────────────────────
+/node_modules
+/.pnp
+.pnp.js
+
+# ── Next.js build output ──────────────────────────────────────────────────────
+/.next/
+/out/
+/build
+
+# ── Environment files — NEVER commit secrets ──────────────────────────────────
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+.env.staging
+
+# ── Docker Compose files for OTHER services (contain hardcoded credentials) ───
+# Only docker/docker-stack.yml (ADMIA stack) is safe to commit.
+docker_*.yaml
+docker_*.yml
+
+# ── Local planning / scratch documents ───────────────────────────────────────
+ADMIA prompt inicial.txt
+
+# ── TypeScript build cache ────────────────────────────────────────────────────
+*.tsbuildinfo
+next-env.d.ts
+
+# ── Debug logs ────────────────────────────────────────────────────────────────
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# ── OS generated files ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# ── Editor / IDE ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Certificates ─────────────────────────────────────────────────────────────
+*.pem
+*.key
+*.crt

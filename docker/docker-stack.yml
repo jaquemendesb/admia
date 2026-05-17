@@ -1,0 +1,88 @@
+version: "3.7"
+
+# ──────────────��─────────────────────────���────────────────────────────────────
+# ADMIA — Docker Swarm Stack
+#
+# Deploy:
+#   docker stack deploy -c docker/docker-stack.yml admia
+#
+# Required secrets / env vars:
+#   DATABASE_URL        — postgresql://postgres:SENHA@postgres:5432/pjm_automation_ai
+#                         (hostname 'postgres' = serviço PostgreSQL na rede pjm-network)
+#   NEXTAUTH_URL        — https://admia.jaquemendes.com
+#   NEXTAUTH_SECRET     — openssl rand -base64 32
+#   ENCRYPTION_KEY      — openssl rand -base64 32
+#
+# Before first deploy, run migrations:
+#   docker exec <container_id> npx prisma migrate deploy
+#
+# Before first deploy, run seed (once):
+#   SEED_ADMIN_EMAIL=... SEED_ADMIN_PASSWORD=... \
+#     docker exec <container_id> npx prisma db seed
+# ─────────────────────────────────────────────��───────────────────────────────
+
+services:
+  admia:
+    image: jaquemendesb/admia:latest
+
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - RUNTIME_API_KEY=${RUNTIME_API_KEY}
+
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    networks:
+      - pjm-network
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 3
+
+      labels:
+        #######################################
+        # TRAEFIK
+        #######################################
+        - traefik.enable=true
+        - traefik.docker.network=pjm-network
+
+        #######################################
+        # ROUTER
+        #######################################
+        - traefik.http.routers.admia.rule=Host(`admia.jaquemendes.com`)
+        - traefik.http.routers.admia.entrypoints=websecure
+        - traefik.http.routers.admia.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.admia.service=admia
+
+        #######################################
+        # SERVICE
+        #######################################
+        - traefik.http.services.admia.loadbalancer.server.port=3000
+        - traefik.http.services.admia.loadbalancer.passHostHeader=true
+
+networks:
+  pjm-network:
+    external: true
+    name: pjm-network
