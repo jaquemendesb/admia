@@ -1,38 +1,34 @@
 version: "3.7"
 
-# ──────────────��─────────────────────────���────────────────────────────────────
+# =============================================================================
 # ADMIA — Docker Swarm Stack
+# Plataforma de governança administrativa do ecossistema Prof Jaque Mendes.
 #
-# Deploy:
+# Deploy via Portainer (recomendado) ou CLI:
 #   docker stack deploy -c docker/docker-stack.yml admia
 #
-# Required secrets / env vars:
-#   DATABASE_URL        — postgresql://postgres:SENHA@postgres:5432/pjm_automation_ai
-#                         (hostname 'postgres' = serviço PostgreSQL na rede pjm-network)
-#   NEXTAUTH_URL        — https://admia.jaquemendes.com
-#   NEXTAUTH_SECRET     — openssl rand -base64 32
-#   ENCRYPTION_KEY      — openssl rand -base64 32
-#
-# Before first deploy, run migrations:
-#   docker exec <container_id> npx prisma migrate deploy
-#
-# Before first deploy, run seed (once):
-#   SEED_ADMIN_EMAIL=... SEED_ADMIN_PASSWORD=... \
-#     docker exec <container_id> npx prisma db seed
-# ─────────────────────────────────────────────��───────────────────────────────
+# Após o primeiro deploy, execute no container:
+#   npx prisma migrate deploy
+#   SEED_ADMIN_EMAIL=... SEED_ADMIN_PASSWORD=... npx prisma db seed
+# =============================================================================
 
 services:
   admia:
-    image: jaquemendesb/admia:latest
+    image: jaquemendesb/admia:latest  # Imagem publicada via GitHub Actions no Docker Hub
 
+    # ── Variáveis de ambiente ─────────────────────────────────────────────────
+    # Preencher no Portainer em "Environment variables" ou via arquivo .env
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=${DATABASE_URL}
-      - NEXTAUTH_URL=${NEXTAUTH_URL}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
-      - RUNTIME_API_KEY=${RUNTIME_API_KEY}
+      - DATABASE_URL=${DATABASE_URL}           # postgresql://user:pass@host:5432/pjm_automation_ai
+      - NEXTAUTH_URL=${NEXTAUTH_URL}           # https://admia.jaquemendes.com
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}     # openssl rand -base64 32
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}       # openssl rand -base64 32 — criptografa credenciais de integração
+      - RUNTIME_API_KEY=${RUNTIME_API_KEY}     # openssl rand -base64 32 — autenticação dos endpoints /api/runtime/*
 
+    # ── Health check ──────────────────────────────────────────────────────────
+    # Swarm só considera o container saudável após /api/health retornar 200.
+    # start_period dá tempo para o Next.js iniciar antes das verificações.
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
       interval: 30s
@@ -41,15 +37,16 @@ services:
       start_period: 40s
 
     networks:
-      - pjm-network
+      - pjm-network  # Rede overlay compartilhada com Traefik, WAHA, LiteLLM e Chatwoot
 
+    # ── Configuração do Swarm ─────────────────────────────────────────────────
     deploy:
       mode: replicated
       replicas: 1
 
       placement:
         constraints:
-          - node.role == manager
+          - node.role == manager  # Garante execução no nó manager onde o Traefik está
 
       resources:
         limits:
@@ -57,32 +54,27 @@ services:
           memory: 512M
 
       restart_policy:
-        condition: any
+        condition: any   # Reinicia automaticamente em qualquer falha
         delay: 10s
         max_attempts: 3
 
+      # ── Traefik — roteamento e TLS ─────────────────────────────────────────
       labels:
-        #######################################
-        # TRAEFIK
-        #######################################
         - traefik.enable=true
         - traefik.docker.network=pjm-network
 
-        #######################################
-        # ROUTER
-        #######################################
+        # Roteamento: apenas requisições para admia.jaquemendes.com
         - traefik.http.routers.admia.rule=Host(`admia.jaquemendes.com`)
         - traefik.http.routers.admia.entrypoints=websecure
-        - traefik.http.routers.admia.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.admia.tls.certresolver=letsencryptresolver  # TLS automático via Let's Encrypt
         - traefik.http.routers.admia.service=admia
 
-        #######################################
-        # SERVICE
-        #######################################
+        # Porta interna do Next.js
         - traefik.http.services.admia.loadbalancer.server.port=3000
         - traefik.http.services.admia.loadbalancer.passHostHeader=true
 
+# ── Redes ─────────────────────────────────────────────────────────────────────
 networks:
   pjm-network:
-    external: true
+    external: true   # Rede já existente — criada pelo stack do Traefik
     name: pjm-network
