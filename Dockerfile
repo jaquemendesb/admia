@@ -1,11 +1,11 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # ADMIA — Production Dockerfile
 # Multi-stage build with Next.js standalone output
-# ─────────────────────────────────���──────────────────────────────────��────────
+# ─────────────────────────────────────────────────────────────────────────────
 
 FROM node:20-alpine AS base
 
-# ── Stage 1: Install dependencies ────────��────────────────────────────────────
+# ── Stage 1: Install dependencies ────────────────────────────────────────────
 FROM base AS deps
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
@@ -13,7 +13,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 
-# ── Stage 2: Build ────────────────────────────��───────────────────────────────
+# ── Stage 2: Build ────────────────────────────────────────────────────────────
 FROM base AS builder
 RUN apk add --no-cache openssl
 WORKDIR /app
@@ -27,7 +27,7 @@ RUN npx prisma generate
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-# ── Stage 3: Production runner ────────────────────────────���───────────────────
+# ── Stage 3: Production runner ────────────────────────────────────────────────
 FROM base AS runner
 RUN apk add --no-cache openssl
 WORKDIR /app
@@ -43,10 +43,22 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy Prisma schema and migrations for runtime migration execution
+# Prisma schema, migrations e client
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+
+# Prisma CLI — necessário para rodar migrations no entrypoint
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+
+# tsx — necessário para rodar o seed
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin/tsx ./node_modules/.bin/tsx
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/tsx ./node_modules/tsx
+
+# Entrypoint: roda migrations e inicia o servidor
+COPY --chown=nextjs:nodejs docker/entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 
 USER nextjs
 
@@ -54,4 +66,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["./entrypoint.sh"]
