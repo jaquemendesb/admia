@@ -26,6 +26,7 @@ services:
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}     # openssl rand -base64 32
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}       # openssl rand -base64 32 — criptografa credenciais de integração
       - RUNTIME_API_KEY=${RUNTIME_API_KEY}     # openssl rand -base64 32 — autenticação dos endpoints /api/runtime/*
+      - AUTH_TRUST_HOST=true                   # necessário quando rodando atrás de proxy reverso (Traefik)
 
     # ── Health check ──────────────────────────────────────────────────────────
     # Swarm só considera o container saudável após /api/health retornar 200.
