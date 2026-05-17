@@ -7,16 +7,13 @@ version: "3.7"
 # Deploy via Portainer (recomendado) ou CLI:
 #   docker stack deploy -c docker/docker-stack.yml admia
 #
-# Após o primeiro deploy, execute no container (apenas uma vez):
+# As migrations rodam automaticamente ao iniciar (via docker/entrypoint.sh).
 #
-#   1. Aplicar migrations no banco:
-#      docker exec $(docker ps -q -f name=admia_admia) ./node_modules/.bin/prisma migrate deploy
-#
-#   2. Criar usuário SUPER_ADMIN:
-#      docker exec \
-#        -e SEED_ADMIN_EMAIL=admin@jaquemendes.com \
-#        -e SEED_ADMIN_PASSWORD=SuaSenha \
-#        $(docker ps -q -f name=admia_admia) ./node_modules/.bin/tsx prisma/seeds/index.ts
+# Após o primeiro deploy, crie o usuário SUPER_ADMIN (apenas uma vez):
+#   docker exec \
+#     -e SEED_ADMIN_EMAIL=admin@jaquemendes.com \
+#     -e SEED_ADMIN_PASSWORD=SuaSenha \
+#     $(docker ps -q -f name=admia_admia) ./node_modules/.bin/tsx prisma/seeds/index.ts
 # =============================================================================
 
 services:
