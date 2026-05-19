@@ -111,7 +111,6 @@ export async function runWooSync(integrationId: string): Promise<SyncResult> {
         integration_id: integrationId,
         source_type: "WOOCOMMERCE",
         deleted_at: null,
-        active: true,
         external_id: { notIn: [...seenExternalIds] },
       },
       select: { id: true },
@@ -120,7 +119,7 @@ export async function runWooSync(integrationId: string): Promise<SyncResult> {
     if (staleItems.length > 0) {
       await prisma.catalogItem.updateMany({
         where: { id: { in: staleItems.map((i) => i.id) } },
-        data: { active: false },
+        data: { active: false, deleted_at: new Date() },
       })
       deactivated = staleItems.length
     }
