@@ -104,7 +104,7 @@ export async function checkContactPolicy(phone: string): Promise<ContactPolicyCh
 
 // ── Catalog Context ───────────────────────────────────────────────────────────
 
-export async function getRuntimeCatalog(channelSlug?: string) {
+export async function getRuntimeCatalog(channelSlug?: string, q?: string) {
   let channelId: string | undefined
   if (channelSlug) {
     const channel = await prisma.businessChannel.findFirst({
@@ -114,9 +114,16 @@ export async function getRuntimeCatalog(channelSlug?: string) {
     channelId = channel?.id
   }
 
+  const textFilter = buildTextFilter(q)
+
   if (channelId) {
     const assignments = await prisma.channelAssignment.findMany({
-      where: { business_channel_id: channelId, deleted_at: null, visible: true },
+      where: {
+        business_channel_id: channelId,
+        deleted_at: null,
+        visible: true,
+        catalog_item: { active: true, deleted_at: null, ...textFilter },
+      },
       include: {
         catalog_item: {
           select: {
@@ -127,18 +134,36 @@ export async function getRuntimeCatalog(channelSlug?: string) {
         },
       },
       orderBy: { priority: "asc" },
+      take: 15,
     })
     return assignments.map((a) => ({ ...a.catalog_item, assignment_role: a.assignment_role }))
   }
 
   return prisma.catalogItem.findMany({
-    where: { active: true, deleted_at: null },
+    where: { active: true, deleted_at: null, ...textFilter },
     select: {
       id: true, title: true, slug: true, item_type: true,
       short_description: true, price: true, sale_price: true,
       access_url: true,
     },
-    take: 200,
+    take: 15,
     orderBy: { title: "asc" },
   })
+}
+
+function buildTextFilter(q?: string) {
+  if (!q) return {}
+  const words = q
+    .toLowerCase()
+    .replace(/[^\w\sáéíóúãõâêîôûàèìòùç]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 2)
+    .slice(0, 6)
+  if (words.length === 0) return {}
+  return {
+    OR: words.flatMap((word) => [
+      { title: { contains: word, mode: "insensitive" as const } },
+      { short_description: { contains: word, mode: "insensitive" as const } },
+    ]),
+  }
 }

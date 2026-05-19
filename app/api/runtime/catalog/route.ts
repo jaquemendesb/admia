@@ -4,7 +4,9 @@ import { getRuntimeCatalog } from "@/lib/services/runtime.service"
 
 export async function GET(req: NextRequest) {
   return withRuntimeAuth(req, async () => {
-    const channel = new URL(req.url).searchParams.get("channel") ?? undefined
-    return NextResponse.json(await getRuntimeCatalog(channel))
+    const url = new URL(req.url)
+    const channel = url.searchParams.get("channel") ?? undefined
+    const q = url.searchParams.get("q") ?? undefined
+    return NextResponse.json(await getRuntimeCatalog(channel, q))
   })
 }
