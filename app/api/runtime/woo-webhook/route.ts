@@ -17,6 +17,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Integration not found" }, { status: 404 })
   }
 
+  // Read body once — needed for both signature validation and payload parsing
+  const rawBody = await req.text()
+
   // Validate WooCommerce HMAC-SHA256 signature
   const signature = req.headers.get("x-wc-webhook-signature")
   const webhookSecret = (integration.metadata as Record<string, unknown> | null)?.webhook_secret as string | undefined
@@ -25,7 +28,6 @@ export async function POST(req: NextRequest) {
     if (!signature) {
       return NextResponse.json({ error: "Missing signature" }, { status: 401 })
     }
-    const rawBody = await req.text()
     const expected = crypto.createHmac("sha256", webhookSecret).update(rawBody, "utf8").digest("base64")
     if (signature !== expected) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
@@ -36,6 +38,17 @@ export async function POST(req: NextRequest) {
   const topic = req.headers.get("x-wc-webhook-topic") ?? ""
   if (!topic.startsWith("product.")) {
     return NextResponse.json({ ok: true, skipped: true, topic })
+  }
+
+  // For product.created: skip drafts — no point importing a product that isn't published yet.
+  // For product.updated / product.deleted: always sync — the product may have gone from
+  // published → draft and we need to deactivate it in the catalog.
+  if (topic === "product.created") {
+    let payload: Record<string, unknown> = {}
+    try { payload = JSON.parse(rawBody) } catch { /* ignore parse errors */ }
+    if (payload.status !== "publish") {
+      return NextResponse.json({ ok: true, skipped: true, topic, reason: "draft" })
+    }
   }
 
   // Respond 200 immediately — WooCommerce retries on timeout
