@@ -135,12 +135,12 @@ export function IntegrationForm({ defaultValues, channels = [], onSubmit, onCanc
           )} />
         )}
         {isEditing && defaultValues?.id && (
-          <div className="space-y-3 rounded-md border p-3 bg-muted/40">
+          <div className="space-y-3 rounded-md border p-3 bg-muted/40 overflow-hidden">
             <p className="text-sm font-medium">Webhook WooCommerce</p>
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0">
               <p className="text-xs text-muted-foreground">URL para configurar em WooCommerce → Avançado → Webhooks</p>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 truncate rounded bg-background px-2 py-1 text-xs border">
+              <div className="flex items-center gap-2 min-w-0">
+                <code className="min-w-0 flex-1 block truncate rounded bg-background px-2 py-1 text-xs border">
                   {`https://admia.jaquemendes.com/api/runtime/woo-webhook?integration_id=${defaultValues.id}`}
                 </code>
                 <Button
