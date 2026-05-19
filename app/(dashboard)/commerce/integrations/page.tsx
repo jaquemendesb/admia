@@ -11,7 +11,10 @@ export default async function IntegrationsPage() {
   const role = (session?.user?.role ?? "READONLY") as RoleName
   const [rawIntegrations, channels] = await Promise.all([listIntegrations(), listChannels()])
 
-  const integrations = rawIntegrations.map(({ credentials_encrypted: _, ...rest }) => rest)
+  const integrations = rawIntegrations.map(({ credentials_encrypted: _, metadata, ...rest }) => ({
+    ...rest,
+    webhook_secret: (metadata as Record<string, unknown> | null)?.webhook_secret as string | null ?? null,
+  }))
 
   return (
     <div className="space-y-6">

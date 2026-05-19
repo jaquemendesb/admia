@@ -37,6 +37,7 @@ export async function createIntegration(data: CreateIntegrationInput) {
       active: data.active,
       sync_enabled: data.sync_enabled,
       default_channel_id: data.default_channel_id ?? null,
+      metadata: data.webhook_secret ? { webhook_secret: data.webhook_secret } : undefined,
     },
   })
 }
@@ -58,6 +59,14 @@ export async function updateIntegration(id: string, data: UpdateIntegrationInput
       data.consumer_key ?? current.consumer_key,
       data.consumer_secret ?? current.consumer_secret
     )
+  }
+
+  if (data.webhook_secret !== undefined) {
+    const existing = await prisma.integration.findFirst({ where: { id, deleted_at: null }, select: { metadata: true } })
+    const currentMeta = (existing?.metadata as Record<string, unknown> | null) ?? {}
+    updateData.metadata = data.webhook_secret
+      ? { ...currentMeta, webhook_secret: data.webhook_secret }
+      : { ...currentMeta, webhook_secret: null }
   }
 
   return prisma.integration.update({ where: { id }, data: updateData })

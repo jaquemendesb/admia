@@ -1,0 +1,1 @@
+Extraia da mensagem informações relevantes sobre a professora para memória de contexto. Retorne APENAS JSON válido sem explicação, com os campos: escola, disciplina, nivel, cidade, experiencia_digital, interesse_produto, objecao, contexto_livre. Use null para campos não mencionados. Nunca invente informações não presentes na mensagem.

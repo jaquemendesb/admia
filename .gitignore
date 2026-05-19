@@ -28,6 +28,9 @@
 docker_*.yaml
 docker_*.yml
 
+# ── Credenciais de ferramentas externas (Claude Code / automação) ─────────────
+.env.tools
+
 # ── Local planning / scratch documents ───────────────────────────────────────
 ADMIA prompt inicial.txt
 

@@ -10,6 +10,7 @@ export const createIntegrationSchema = z.object({
   active: z.boolean().default(true),
   sync_enabled: z.boolean().default(false),
   default_channel_id: z.string().uuid().optional().nullable(),
+  webhook_secret: z.string().max(255).optional().nullable(),
 })
 
 export const updateIntegrationSchema = z.object({
@@ -21,6 +22,7 @@ export const updateIntegrationSchema = z.object({
   active: z.boolean().optional(),
   sync_enabled: z.boolean().optional(),
   default_channel_id: z.string().uuid().optional().nullable(),
+  webhook_secret: z.string().max(255).optional().nullable(),
 })
 
 export type CreateIntegrationInput = z.infer<typeof createIntegrationSchema>

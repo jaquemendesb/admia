@@ -12,6 +12,8 @@ import { SubmitButton } from "@/components/forms/submit-button"
 import { DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Copy } from "lucide-react"
+import { toast } from "sonner"
 
 type IntegrationRow = {
   id: string
@@ -22,6 +24,7 @@ type IntegrationRow = {
   active: boolean
   sync_enabled: boolean
   default_channel_id: string | null
+  webhook_secret?: string | null
 }
 
 interface IntegrationFormProps {
@@ -47,6 +50,7 @@ export function IntegrationForm({ defaultValues, channels = [], onSubmit, onCanc
       active: defaultValues?.active ?? true,
       sync_enabled: defaultValues?.sync_enabled ?? false,
       default_channel_id: defaultValues?.default_channel_id ?? null,
+      webhook_secret: defaultValues?.webhook_secret ?? "",
     },
   })
 
@@ -69,6 +73,7 @@ export function IntegrationForm({ defaultValues, channels = [], onSubmit, onCanc
       patch.active = data.active
       patch.sync_enabled = data.sync_enabled
       patch.default_channel_id = data.default_channel_id
+      patch.webhook_secret = data.webhook_secret || null
       await onSubmit(patch)
     } else {
       await onSubmit(data)
@@ -129,6 +134,50 @@ export function IntegrationForm({ defaultValues, channels = [], onSubmit, onCanc
             </FormItem>
           )} />
         )}
+        {isEditing && defaultValues?.id && (
+          <div className="space-y-3 rounded-md border p-3 bg-muted/40">
+            <p className="text-sm font-medium">Webhook WooCommerce</p>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">URL para configurar em WooCommerce → Avançado → Webhooks</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 truncate rounded bg-background px-2 py-1 text-xs border">
+                  {`https://admia.jaquemendes.com/api/runtime/woo-webhook?integration_id=${defaultValues.id}`}
+                </code>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`https://admia.jaquemendes.com/api/runtime/woo-webhook?integration_id=${defaultValues.id}`)
+                    toast.success("URL copiada")
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+            <FormField control={form.control} name="webhook_secret" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-xs">Segredo do webhook</FormLabel>
+                <FormControl>
+                  <Input
+                    type="password"
+                    autoComplete="off"
+                    placeholder="Cole o segredo gerado no WooCommerce"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormDescription className="text-xs">
+                  Mesmo valor configurado no campo &quot;Segredo&quot; do webhook no WooCommerce. Deixe em branco para aceitar chamadas sem validação.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )} />
+          </div>
+        )}
+
         <div className="flex gap-6">
           <FormField control={form.control} name="active" render={({ field }) => (
             <FormItem className="flex items-center gap-2 space-y-0">

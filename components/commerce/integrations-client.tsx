@@ -28,6 +28,7 @@ type IntegrationRow = {
   last_sync_at: string | null
   default_channel_id: string | null
   default_channel: { id: string; name: string } | null
+  webhook_secret?: string | null
 }
 
 interface IntegrationsClientProps {
