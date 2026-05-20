@@ -151,19 +151,41 @@ export async function getRuntimeCatalog(channelSlug?: string, q?: string) {
   })
 }
 
+// Words that appear in almost every product title — useless as search terms
+const STOP_WORDS = new Set([
+  "atividade", "atividades", "para", "com", "uma", "uns", "umas", "que", "tem",
+  "qual", "quais", "como", "sobre", "nos", "nas", "dos", "das", "por", "pelo",
+  "pela", "este", "essa", "isso", "ele", "ela", "seu", "sua", "ter", "ser",
+  "vai", "vou", "nao", "sim", "mas", "mais", "menos", "muito", "pouco",
+  "aqui", "ali", "quando", "onde", "varios", "varias", "algumas", "alguns",
+  "outro", "outra", "todo", "toda", "todos", "todas",
+])
+
 function buildTextFilter(q?: string) {
   if (!q) return {}
-  const words = q
+
+  // Remove accents, punctuation, lowercase — then split into words
+  const normalized = q
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")  // strip combining diacritics
     .toLowerCase()
-    .replace(/[^\w\sáéíóúãõâêîôûàèìòùç]/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+
+  const words = normalized
     .split(/\s+/)
-    .filter((w) => w.length > 2)
-    .slice(0, 6)
+    .filter((w) => w.length > 3 && !STOP_WORDS.has(w))
+    .slice(0, 5)
+
   if (words.length === 0) return {}
+
+  // Use a 7-char prefix so accent-bearing DB values still match.
+  // E.g. "matematicas" → stem "matemat" → ILIKE '%matemat%' → hits "matemática"
+  const stems = [...new Set(words.map((w) => (w.length > 7 ? w.slice(0, 7) : w)))]
+
   return {
-    OR: words.flatMap((word) => [
-      { title: { contains: word, mode: "insensitive" as const } },
-      { short_description: { contains: word, mode: "insensitive" as const } },
+    OR: stems.flatMap((stem) => [
+      { title: { contains: stem, mode: "insensitive" as const } },
+      { short_description: { contains: stem, mode: "insensitive" as const } },
     ]),
   }
 }
