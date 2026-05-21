@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/client"
+import { Prisma } from "@prisma/client"
 
 // ── Persona ───────────────────────────────────────────────────────────────────
 
@@ -104,6 +105,17 @@ export async function checkContactPolicy(phone: string): Promise<ContactPolicyCh
 
 // ── Catalog Context ───────────────────────────────────────────────────────────
 
+type CatalogRow = {
+  id: string
+  title: string
+  slug: string
+  item_type: string
+  short_description: string | null
+  price: string | null
+  sale_price: string | null
+  access_url: string | null
+}
+
 export async function getRuntimeCatalog(channelSlug?: string, q?: string) {
   let channelId: string | undefined
   if (channelSlug) {
@@ -114,7 +126,40 @@ export async function getRuntimeCatalog(channelSlug?: string, q?: string) {
     channelId = channel?.id
   }
 
-  const textFilter = buildTextFilter(q)
+  const searchTerms = buildSearchTerms(q)
+
+  if (searchTerms.length > 0) {
+    // unaccent() normalizes both sides → accent-insensitive search
+    const termConditions = searchTerms.map(
+      (t) => Prisma.sql`(unaccent(ci.title) ILIKE unaccent(${"%" + t + "%"}) OR unaccent(ci.short_description) ILIKE unaccent(${"%" + t + "%"}))`
+    )
+    const whereTerms = Prisma.join(termConditions, " OR ")
+
+    if (channelId) {
+      return prisma.$queryRaw<(CatalogRow & { assignment_role: string | null })[]>`
+        SELECT ci.id, ci.title, ci.slug, ci.item_type,
+               ci.short_description, ci.price, ci.sale_price, ci.access_url,
+               ca.assignment_role
+        FROM channel_assignments ca
+        JOIN catalog_items ci ON ci.id = ca.catalog_item_id
+        WHERE ca.business_channel_id = ${channelId}
+          AND ca.deleted_at IS NULL AND ca.visible = true
+          AND ci.active = true AND ci.deleted_at IS NULL
+          AND (${whereTerms})
+        ORDER BY ca.priority ASC
+        LIMIT 15
+      `
+    }
+
+    return prisma.$queryRaw<CatalogRow[]>`
+      SELECT id, title, slug, item_type,
+             short_description, price, sale_price, access_url
+      FROM catalog_items
+      WHERE active = true AND deleted_at IS NULL AND (${whereTerms})
+      ORDER BY title ASC
+      LIMIT 15
+    `
+  }
 
   if (channelId) {
     const assignments = await prisma.channelAssignment.findMany({
@@ -122,7 +167,7 @@ export async function getRuntimeCatalog(channelSlug?: string, q?: string) {
         business_channel_id: channelId,
         deleted_at: null,
         visible: true,
-        catalog_item: { active: true, deleted_at: null, ...textFilter },
+        catalog_item: { active: true, deleted_at: null },
       },
       include: {
         catalog_item: {
@@ -140,7 +185,7 @@ export async function getRuntimeCatalog(channelSlug?: string, q?: string) {
   }
 
   return prisma.catalogItem.findMany({
-    where: { active: true, deleted_at: null, ...textFilter },
+    where: { active: true, deleted_at: null },
     select: {
       id: true, title: true, slug: true, item_type: true,
       short_description: true, price: true, sale_price: true,
@@ -161,13 +206,12 @@ const STOP_WORDS = new Set([
   "outro", "outra", "todo", "toda", "todos", "todas",
 ])
 
-function buildTextFilter(q?: string) {
-  if (!q) return {}
+function buildSearchTerms(q?: string): string[] {
+  if (!q) return []
 
-  // Remove accents, punctuation, lowercase — then split into words
   const normalized = q
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")  // strip combining diacritics
+    .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, " ")
 
@@ -176,16 +220,5 @@ function buildTextFilter(q?: string) {
     .filter((w) => w.length > 3 && !STOP_WORDS.has(w))
     .slice(0, 5)
 
-  if (words.length === 0) return {}
-
-  // Use a 7-char prefix so accent-bearing DB values still match.
-  // E.g. "matematicas" → stem "matemat" → ILIKE '%matemat%' → hits "matemática"
-  const stems = [...new Set(words.map((w) => (w.length > 7 ? w.slice(0, 7) : w)))]
-
-  return {
-    OR: stems.flatMap((stem) => [
-      { title: { contains: stem, mode: "insensitive" as const } },
-      { short_description: { contains: stem, mode: "insensitive" as const } },
-    ]),
-  }
+  return [...new Set(words)]
 }

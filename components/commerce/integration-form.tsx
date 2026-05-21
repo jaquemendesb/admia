@@ -160,17 +160,34 @@ export function IntegrationForm({ defaultValues, channels = [], onSubmit, onCanc
             <FormField control={form.control} name="webhook_secret" render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-xs">Segredo do webhook</FormLabel>
-                <FormControl>
-                  <Input
-                    type="password"
-                    autoComplete="off"
-                    placeholder="Cole o segredo gerado no WooCommerce"
-                    {...field}
-                    value={field.value ?? ""}
-                  />
-                </FormControl>
+                <div className="flex gap-2">
+                  <FormControl>
+                    <Input
+                      type="text"
+                      autoComplete="off"
+                      placeholder="Gere ou cole um segredo"
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 text-xs"
+                    onClick={() => {
+                      const secret = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+                        .map(b => b.toString(16).padStart(2, "0")).join("")
+                      field.onChange(secret)
+                      navigator.clipboard.writeText(secret)
+                      toast.success("Segredo gerado e copiado")
+                    }}
+                  >
+                    Gerar
+                  </Button>
+                </div>
                 <FormDescription className="text-xs">
-                  Mesmo valor configurado no campo &quot;Segredo&quot; do webhook no WooCommerce. Deixe em branco para aceitar chamadas sem validação.
+                  Cole este valor no campo &quot;Segredo&quot; de cada webhook no WooCommerce (product.created, product.updated, product.deleted).
                 </FormDescription>
                 <FormMessage />
               </FormItem>
