@@ -129,11 +129,19 @@ export async function getRuntimeCatalog(channelSlug?: string, q?: string) {
   const searchTerms = buildSearchTerms(q)
 
   if (searchTerms.length > 0) {
-    // unaccent() normalizes both sides → accent-insensitive search
-    const termConditions = searchTerms.map(
-      (t) => Prisma.sql`(unaccent(ci.title) ILIKE unaccent(${"%" + t + "%"}) OR unaccent(ci.short_description) ILIKE unaccent(${"%" + t + "%"}))`
-    )
-    const whereTerms = Prisma.join(termConditions, " OR ")
+    // TRANSLATE normalizes accented chars on the DB side — no extension required.
+    // Both the stored value and the search term are lowercased + accent-stripped
+    // before comparison, so "matematica" matches "Matemática".
+    const FROM_CHARS = "áàâãäéèêëíìîïóòôõöúùûüçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ"
+    const TO_CHARS   = "aaaaaeeeeiiiioooooouuuucAAAAEEEEIIIIOOOOOUUUUC"
+
+    const buildWhere = (titleCol: string, descCol: string) => {
+      const conds = searchTerms.map((t) => Prisma.sql`(
+        TRANSLATE(LOWER(${Prisma.raw(titleCol)}), ${FROM_CHARS}, ${TO_CHARS}) ILIKE ${"%" + t + "%"}
+        OR TRANSLATE(LOWER(COALESCE(${Prisma.raw(descCol)}, '')), ${FROM_CHARS}, ${TO_CHARS}) ILIKE ${"%" + t + "%"}
+      )`)
+      return conds.slice(1).reduce((acc, c) => Prisma.sql`${acc} OR ${c}`, conds[0])
+    }
 
     if (channelId) {
       return prisma.$queryRaw<(CatalogRow & { assignment_role: string | null })[]>`
@@ -145,7 +153,7 @@ export async function getRuntimeCatalog(channelSlug?: string, q?: string) {
         WHERE ca.business_channel_id = ${channelId}
           AND ca.deleted_at IS NULL AND ca.visible = true
           AND ci.active = true AND ci.deleted_at IS NULL
-          AND (${whereTerms})
+          AND (${buildWhere("ci.title", "ci.short_description")})
         ORDER BY ca.priority ASC
         LIMIT 15
       `
@@ -155,7 +163,7 @@ export async function getRuntimeCatalog(channelSlug?: string, q?: string) {
       SELECT id, title, slug, item_type,
              short_description, price, sale_price, access_url
       FROM catalog_items
-      WHERE active = true AND deleted_at IS NULL AND (${whereTerms})
+      WHERE active = true AND deleted_at IS NULL AND (${buildWhere("title", "short_description")})
       ORDER BY title ASC
       LIMIT 15
     `
