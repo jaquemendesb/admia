@@ -17,10 +17,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Integration not found" }, { status: 404 })
   }
 
+  // Check topic first — pings (webhook.created, webhook.deleted) bypass signature
+  // validation and return 200 immediately so WooCommerce accepts the delivery URL.
+  const topic = req.headers.get("x-wc-webhook-topic") ?? ""
+  if (!topic.startsWith("product.")) {
+    return NextResponse.json({ ok: true, skipped: true, topic })
+  }
+
   // Read body once — needed for both signature validation and payload parsing
   const rawBody = await req.text()
 
-  // Validate WooCommerce HMAC-SHA256 signature
+  // Validate WooCommerce HMAC-SHA256 signature for product events
   const signature = req.headers.get("x-wc-webhook-signature")
   const webhookSecret = (integration.metadata as Record<string, unknown> | null)?.webhook_secret as string | undefined
 
@@ -32,12 +39,6 @@ export async function POST(req: NextRequest) {
     if (signature !== expected) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
     }
-  }
-
-  // Only process product events
-  const topic = req.headers.get("x-wc-webhook-topic") ?? ""
-  if (!topic.startsWith("product.")) {
-    return NextResponse.json({ ok: true, skipped: true, topic })
   }
 
   // For product.created: skip drafts — no point importing a product that isn't published yet.
