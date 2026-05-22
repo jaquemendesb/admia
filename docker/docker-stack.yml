@@ -32,7 +32,7 @@ services:
       - RUNTIME_API_KEY=${RUNTIME_API_KEY}               # openssl rand -base64 32 — autenticação dos endpoints /api/runtime/*
       - AUTH_TRUST_HOST=true                             # necessário quando rodando atrás de proxy reverso (Traefik)
       - REDIS_URL=${REDIS_URL}                           # redis://n8n_redis:6379 — serviço Redis da stack n8n na pjm-network
-      - N8N_CACHE_WEBHOOK_URL=${N8N_CACHE_WEBHOOK_URL}   # https://automacao.jaquemendes.com/webhook/admia-cache-refresh
+      - N8N_CACHE_WEBHOOK_URL=${N8N_CACHE_WEBHOOK_URL}   # https://hooks.jaquemendes.com/webhook/admia-cache-refresh
       - N8N_CACHE_WEBHOOK_SECRET=${N8N_CACHE_WEBHOOK_SECRET} # segredo compartilhado com o webhook n8n (opcional)
 
     # ── Health check ──────────────────────────────────────────────────────────
