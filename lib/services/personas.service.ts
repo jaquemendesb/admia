@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/client"
 import type { CreatePersonaInput, UpdatePersonaInput } from "@/lib/validation/personas"
+import { triggerCacheRefresh } from "@/lib/services/cache-refresh.service"
 
 export async function listPersonas() {
   return prisma.persona.findMany({
@@ -13,7 +14,7 @@ export async function getPersona(id: string) {
 }
 
 export async function createPersona(data: CreatePersonaInput) {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     if (data.is_default) {
       await tx.persona.updateMany({
         where: { deleted_at: null, is_default: true },
@@ -22,10 +23,12 @@ export async function createPersona(data: CreatePersonaInput) {
     }
     return tx.persona.create({ data })
   })
+  void triggerCacheRefresh()
+  return result
 }
 
 export async function updatePersona(id: string, data: UpdatePersonaInput) {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     if (data.is_default) {
       await tx.persona.updateMany({
         where: { deleted_at: null, is_default: true, NOT: { id } },
@@ -34,6 +37,8 @@ export async function updatePersona(id: string, data: UpdatePersonaInput) {
     }
     return tx.persona.update({ where: { id }, data })
   })
+  void triggerCacheRefresh()
+  return result
 }
 
 export async function deletePersona(id: string) {

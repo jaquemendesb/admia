@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/client"
 import type { CreateAgentInput, UpdateAgentInput } from "@/lib/validation/agents"
+import { triggerCacheRefresh } from "@/lib/services/cache-refresh.service"
 
 export async function listAgents() {
   return prisma.aiAgent.findMany({
@@ -13,16 +14,22 @@ export async function getAgent(id: string) {
 }
 
 export async function createAgent(data: CreateAgentInput) {
-  return prisma.aiAgent.create({ data })
+  const result = await prisma.aiAgent.create({ data })
+  void triggerCacheRefresh()
+  return result
 }
 
 export async function updateAgent(id: string, data: UpdateAgentInput) {
-  return prisma.aiAgent.update({ where: { id }, data })
+  const result = await prisma.aiAgent.update({ where: { id }, data })
+  void triggerCacheRefresh()
+  return result
 }
 
 export async function deleteAgent(id: string) {
-  return prisma.aiAgent.update({
+  const result = await prisma.aiAgent.update({
     where: { id },
     data: { deleted_at: new Date() },
   })
+  void triggerCacheRefresh()
+  return result
 }
