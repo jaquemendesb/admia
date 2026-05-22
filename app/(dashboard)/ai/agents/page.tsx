@@ -4,6 +4,7 @@ import type { RoleName } from "@/types/rbac"
 import { listAgents } from "@/lib/services/agents.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { AgentsClient } from "@/components/ai/agents-client"
+import { CacheStatusBadge } from "@/components/ai/cache-status-badge"
 
 export default async function AgentsPage() {
   const session = await auth()
@@ -12,7 +13,11 @@ export default async function AgentsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Agentes" description="Gerencie os agentes de IA e suas configurações." />
+      <PageHeader
+        title="Agentes"
+        description="Gerencie os agentes de IA e suas configurações."
+        actions={<CacheStatusBadge />}
+      />
       <AgentsClient
         agents={agents}
         canCreate={can(role, "agents", "CREATE")}

@@ -4,6 +4,7 @@ import type { RoleName } from "@/types/rbac"
 import { listPersonas } from "@/lib/services/personas.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { PersonasClient } from "@/components/ai/personas-client"
+import { CacheStatusBadge } from "@/components/ai/cache-status-badge"
 
 export default async function PersonasPage() {
   const session = await auth()
@@ -12,7 +13,11 @@ export default async function PersonasPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Personas" description="Configure as personas dos agentes de IA." />
+      <PageHeader
+        title="Personas"
+        description="Configure as personas dos agentes de IA."
+        actions={<CacheStatusBadge />}
+      />
       <PersonasClient
         personas={personas}
         canCreate={can(role, "personas", "CREATE")}
