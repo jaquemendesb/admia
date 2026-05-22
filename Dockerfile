@@ -55,6 +55,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_module
 # bcryptjs — necessário para o seed (hash de senha)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/bcryptjs ./node_modules/bcryptjs
 
+# ioredis — cliente Redis para cache de runtime (lazy Proxy, não rastreado pelo standalone)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/ioredis ./node_modules/ioredis
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/cluster-key-slot ./node_modules/cluster-key-slot
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/debug ./node_modules/debug
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/denque ./node_modules/denque
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/ms ./node_modules/ms
+
 # Entrypoint: roda migrations e inicia o servidor
 COPY --chown=nextjs:nodejs docker/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
