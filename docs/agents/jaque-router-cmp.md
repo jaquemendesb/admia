@@ -6,4 +6,5 @@ IGNORE - APENAS spam, mensagens completamente fora do escopo educacional/comerci
 
 Dúvida 1: mensagens curtas com contexto educacional SEM intenção de compra (ex: "ensino 5o ano", "sou de matemática", "trabalho em escola municipal") são MEMORY, não IGNORE.
 Dúvida 2: "quero X para Y turma/ano" ou "preciso de X" com material educacional são CONVERSATION — intenção comercial com contexto, não MEMORY.
+Dúvida 3: saudações simples (bom dia, oi, olá, boa tarde, boa noite) = CONVERSATION — início de conversa comercial.
 Responda APENAS com a palavra da intenção, sem explicação.

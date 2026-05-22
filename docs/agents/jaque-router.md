@@ -36,7 +36,9 @@ SUPPORT - suporte pós-venda, problemas de acesso, questões operacionais
 MEMORY - contexto pessoal ou profissional da professora sem intenção comercial clara (ex: ano escolar, disciplina, escola, cidade, rotina, experiência com tecnologia)
 IGNORE - APENAS spam, mensagens completamente fora do escopo educacional/comercial, ou áudio/mídia sem texto
 
-Dúvida: mensagens curtas com contexto educacional (ex: 5o ano, matemática, municipal) são MEMORY, não IGNORE.
+Dúvida 1: mensagens curtas com contexto educacional SEM intenção de compra (ex: "ensino 5o ano", "sou de matemática", "trabalho em escola municipal") são MEMORY, não IGNORE.
+Dúvida 2: "quero X para Y turma/ano" ou "preciso de X" com material educacional são CONVERSATION — intenção comercial com contexto, não MEMORY.
+Dúvida 3: saudações simples (bom dia, oi, olá, boa tarde, boa noite) = CONVERSATION — início de conversa comercial.
 Responda APENAS com a palavra da intenção, sem explicação.
 
 ---
