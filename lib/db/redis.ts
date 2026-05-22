@@ -1,22 +1,23 @@
 import Redis from "ioredis"
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __redis: Redis | undefined
-}
+// Lazy singleton — client is only created on first use, not at build time.
+let _instance: Redis | undefined
 
-function createClient(): Redis {
+function getInstance(): Redis {
+  if (_instance) return _instance
   const url = process.env.REDIS_URL
   if (!url) throw new Error("REDIS_URL not configured")
-  return new Redis(url, {
+  _instance = new Redis(url, {
     lazyConnect: true,
     enableOfflineQueue: false,
     maxRetriesPerRequest: 1,
   })
+  return _instance
 }
 
-export const redis = globalThis.__redis ?? createClient()
-
-if (process.env.NODE_ENV !== "production") {
-  globalThis.__redis = redis
-}
+// Proxy so callers use redis.get / redis.set without knowing about lazy init.
+export const redis = new Proxy({} as Redis, {
+  get(_, prop: string) {
+    return (getInstance() as unknown as Record<string, unknown>)[prop]
+  },
+})
