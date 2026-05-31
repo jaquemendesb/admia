@@ -193,6 +193,35 @@ async function main() {
     patched++
   }
 
+  // ── 5. Log Classify — fix referências a nós inexistentes ───────────────────
+  // GET ADMIA Persona e GET ADMIA Router Agent foram removidos e substituídos
+  // por Resolve Runtime. O Log Classify ainda referencia os nós antigos,
+  // causando erros em ~20-40% das execuções.
+  const logNode = wf.nodes.find((n) => n.id === "log1-0001-2222-3333-444455556666")
+  if (!logNode) throw new Error("Node Log Classify not found")
+
+  const LOG_FIX_MARKER = "Resolve Runtime"
+  if (logNode.parameters.jsCode.includes(LOG_FIX_MARKER)) {
+    console.log("  [5] Log Classify — already fixed, skipping")
+  } else {
+    logNode.parameters.jsCode = `const intent  = $json.choices[0].message.content.trim().toUpperCase();
+const runtime = $('Resolve Runtime').item.json;
+const persona = runtime?.persona ?? null;
+const router  = runtime?.router_agent ?? null;
+return [{ json: {
+  ...$json,
+  _log: {
+    classifiedIntent: intent,
+    personaName:      persona?.name ?? null,
+    routerAlias:      router?.model_alias ?? null,
+    leadPhone:        $('DT Ctto').item.json.leadPhone,
+    timestamp:        new Date().toISOString()
+  }
+}}];`
+    console.log("  [5] Log Classify — fixed stale node references (GET ADMIA Persona → Resolve Runtime)")
+    patched++
+  }
+
   if (patched === 0) {
     console.log("\nNada a atualizar — todas as proteções já estão presentes.")
     return
