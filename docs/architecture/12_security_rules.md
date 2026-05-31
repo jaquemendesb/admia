@@ -328,6 +328,33 @@ Avoid unsafe raw query shortcuts unless justified.
 
 ---
 
+# Prompt Injection Rule
+
+## Threat
+
+End users communicating via WhatsApp can embed instructions in messages attempting to override AI system prompts.
+
+## Mandatory Controls
+
+Three defense layers are required (see `09_ai_runtime_architecture.md`):
+
+1. **Deterministic filter** — n8n regex pattern check before any LLM call. Blocks on match without invoking AI.
+2. **XML delimiter wrapping** — All user messages wrapped in `<mensagem_usuario>` tags in prompt assembly. Signals data boundary to the model.
+3. **Security framing in system prompt** — Each agent `prompt_template` stored in ADMIA must include explicit instruction rejecting user-sourced commands.
+
+## Scope
+
+- Filter and XML wrapping: n8n responsibility
+- System prompt security framing: ADMIA governance (admin-editable via UI)
+
+## Forbidden
+
+- Injecting raw WhatsApp message text directly into LLM `content` fields without XML wrapping
+- Relying solely on LLM interpretation to reject injection attempts
+- Prompt templates without explicit security boundary statements
+
+---
+
 # XSS / UI Safety
 
 Admin UI should avoid obvious XSS vulnerabilities.

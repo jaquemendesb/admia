@@ -236,6 +236,47 @@ Prompt architecture must remain modular.
 
 ---
 
+# Prompt Injection Defense (mandatory)
+
+## Step 8a — Injection Filter (before routing/LLM)
+
+Purpose:
+Block prompt injection attempts deterministically.
+
+Implementation:
+n8n Code Node executing regex pattern list against raw user message.
+
+Patterns must cover:
+- "ignore all previous instructions" variants (PT + EN)
+- "you are now" / "você agora é"
+- "forget your instructions" / "esqueça suas instruções"
+- "jailbreak", "DAN mode"
+- "reveal your system prompt" variants
+
+If match found:
+- Do NOT invoke LLM
+- Return safe fallback response to user
+- Log blocked attempt
+
+This must run BEFORE any LiteLLM call.
+
+## Step 9a — User Message XML Wrapping (mandatory in prompt assembly)
+
+All user messages must be wrapped before injection into LLM prompt:
+
+```
+{ "role": "user", "content": "<mensagem_usuario>\n" + rawMessage + "\n</mensagem_usuario>" }
+```
+
+Applies to every LLM node: ROUTER, CONVERSATION, SUPPORT, MEMORY.
+
+Forbidden:
+- injecting raw `leadResponse` directly as user content without XML wrapping
+
+---
+
+---
+
 # Step 10 — Persistence
 
 Purpose:
