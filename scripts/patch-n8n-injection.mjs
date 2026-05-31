@@ -193,14 +193,47 @@ async function main() {
     patched++
   }
 
-  // ── 5. Log Classify — fix referências a nós inexistentes ───────────────────
+  // ── 5. Prepare Conv Messages — fix GET ADMIA Persona → Resolve Runtime ─────
+  const PERSONA_FIX = "Resolve Runtime').item.json?.persona?.system_prompt"
+  if (prepNode.parameters.jsCode.includes(PERSONA_FIX)) {
+    console.log("  [5] Prepare Conv Messages — persona reference already fixed")
+  } else {
+    prepNode.parameters.jsCode = prepNode.parameters.jsCode.replace(
+      "$('GET ADMIA Persona').item.json?.system_prompt",
+      "$('Resolve Runtime').item.json?.persona?.system_prompt"
+    )
+    if (prepNode.parameters.jsCode.includes(PERSONA_FIX)) {
+      console.log("  [5] Prepare Conv Messages — fixed GET ADMIA Persona → Resolve Runtime")
+      patched++
+    } else {
+      console.log("  [5] Prepare Conv Messages — WARNING: pattern not found, skipping")
+    }
+  }
+
+  // ── 6. POST LiteLLM Supp — fix GET ADMIA Persona → Resolve Runtime ─────────
+  if (suppNode.parameters.jsonBody.includes(PERSONA_FIX)) {
+    console.log("  [6] POST LiteLLM Supp — persona reference already fixed")
+  } else {
+    suppNode.parameters.jsonBody = suppNode.parameters.jsonBody.replace(
+      "$('GET ADMIA Persona').item.json?.system_prompt",
+      "$('Resolve Runtime').item.json?.persona?.system_prompt"
+    )
+    if (suppNode.parameters.jsonBody.includes(PERSONA_FIX)) {
+      console.log("  [6] POST LiteLLM Supp — fixed GET ADMIA Persona → Resolve Runtime")
+      patched++
+    } else {
+      console.log("  [6] POST LiteLLM Supp — WARNING: pattern not found, skipping")
+    }
+  }
+
+  // ── 7. Log Classify — fix referências a nós inexistentes ───────────────────
   // GET ADMIA Persona e GET ADMIA Router Agent foram removidos e substituídos
   // por Resolve Runtime. O Log Classify ainda referencia os nós antigos,
   // causando erros em ~20-40% das execuções.
   const logNode = wf.nodes.find((n) => n.id === "log1-0001-2222-3333-444455556666")
   if (!logNode) throw new Error("Node Log Classify not found")
 
-  const LOG_FIX_MARKER = "Resolve Runtime"
+  const LOG_FIX_MARKER = "runtime?.persona"
   if (logNode.parameters.jsCode.includes(LOG_FIX_MARKER)) {
     console.log("  [5] Log Classify — already fixed, skipping")
   } else {
