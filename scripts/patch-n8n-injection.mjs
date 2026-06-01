@@ -193,7 +193,33 @@ async function main() {
     patched++
   }
 
-  // ── 5. Prepare Conv Messages — fix GET ADMIA Persona → Resolve Runtime ─────
+  // ── 5. Governance Check — bloquear mensagens de grupo (@g.us) ───────────────
+  const govNode = wf.nodes.find((n) => n.id === "b3c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8")
+  if (!govNode) throw new Error("Node Governance Check not found")
+
+  if (govNode.parameters.jsCode.includes("GROUP_MESSAGE")) {
+    console.log("  [5] Governance Check — group filter already present")
+  } else {
+    govNode.parameters.jsCode = `const policy = $('GET ADMIA Policy').item.json;
+const config = $('GET ADMIA Config').item.json;
+const isTestMode    = config.test_mode_enabled === 'true';
+const isBlacklisted = policy.blacklisted === true;
+const isTestContact = policy.test_mode === true;
+
+// Rejeita mensagens de grupos — chatId termina em @g.us
+const chatId = $('DT Ctto').item.json.leadChatID ?? '';
+const isGroup = chatId.includes('@g.us');
+
+let should_respond = true, block_reason = null;
+if (isGroup)                          { should_respond = false; block_reason = 'GROUP_MESSAGE'; }
+else if (isBlacklisted)               { should_respond = false; block_reason = 'BLACKLIST'; }
+else if (isTestMode && !isTestContact){ should_respond = false; block_reason = 'TEST_MODE_GATE'; }
+return [{ json: { should_respond, block_reason } }];`
+    console.log("  [5] Governance Check — group message filter added (@g.us → block)")
+    patched++
+  }
+
+  // ── 7. Prepare Conv Messages — fix GET ADMIA Persona → Resolve Runtime ─────
   const PERSONA_FIX = "Resolve Runtime').item.json?.persona?.system_prompt"
   if (prepNode.parameters.jsCode.includes(PERSONA_FIX)) {
     console.log("  [5] Prepare Conv Messages — persona reference already fixed")
@@ -226,7 +252,7 @@ async function main() {
     }
   }
 
-  // ── 7. Log Classify — fix referências a nós inexistentes ───────────────────
+  // ── 8. Log Classify — fix referências a nós inexistentes ───────────────────
   // GET ADMIA Persona e GET ADMIA Router Agent foram removidos e substituídos
   // por Resolve Runtime. O Log Classify ainda referencia os nós antigos,
   // causando erros em ~20-40% das execuções.
