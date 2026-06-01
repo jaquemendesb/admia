@@ -289,6 +289,24 @@ return [{ json: {
   console.log(`\n${patched} mudanças aplicadas. Enviando para n8n...`)
 
   // n8n PUT accepts only these fields — strip server-generated metadata
+  // ── DT Ctto — normaliza leadChatID: @lid → @s.whatsapp.net ─────────────────
+  // WAHA não aceita chatId em formato @lid (WhatsApp multi-device).
+  // Quando payload.from é @lid, usamos SenderAlt (já usado no leadPhone) + @s.whatsapp.net.
+  const dtNode = wf.nodes.find((n) => n.name === "DT Ctto")
+  if (!dtNode) throw new Error("Node DT Ctto not found")
+  const chatIdField = dtNode.parameters?.assignments?.assignments?.find((a) => a.name === "leadChatID")
+  if (!chatIdField) throw new Error("leadChatID assignment not found in DT Ctto")
+
+  if (chatIdField.value.includes("@lid")) {
+    console.log("  [lid] DT Ctto leadChatID — @lid normalization already present")
+  } else {
+    chatIdField.value = `={{ $json.body.payload.from.includes('@lid')
+  ? $json.body.payload._data.Info.SenderAlt.split(':')[0] + '@s.whatsapp.net'
+  : $json.body.payload.from }}`
+    console.log("  [lid] DT Ctto leadChatID — @lid → @s.whatsapp.net normalization added")
+    patched++
+  }
+
   // ── Cleanup: remove orphaned connections (nodes that were deleted) ──────────
   const nodeNames = new Set(wf.nodes.map((n) => n.name))
   let orphansRemoved = 0
